@@ -22,8 +22,8 @@ AWS data pipeline demonstrating data ingestion, transformation, and cleansing us
 
 | Resource | Name | Purpose |
 |----------|------|---------|
-| **Input S3 Bucket** | `795359014756-eu-west-2-datapipeline-raw` | Store raw CSV files |
-| **Output S3 Bucket** | `795359014756-eu-west-2-datapipeline-processed` | Store cleansed data |
+| **Input S3 Bucket** | `<ACCOUNT_ID>-eu-west-2-datapipeline-raw` | Store raw CSV files |
+| **Output S3 Bucket** | `<ACCOUNT_ID>-eu-west-2-datapipeline-processed` | Store cleansed data |
 | **Glue Database** | `datapipeline_poc_db` | Catalog metadata |
 | **Glue Table** | `raw_customers` | Schema for raw data |
 | **Glue Crawler** | `customers-raw-crawler` | Auto-discover schema |
@@ -68,7 +68,7 @@ aws glue get-crawler --name customers-raw-crawler --region eu-west-2 --query "Cr
 ### Run Glue ETL Job
 ```powershell
 # Upload script changes first
-aws s3 cp "src\glue\customer_data_cleansing.py" "s3://795359014756-eu-west-2-datapipeline-raw/scripts/" --region eu-west-2
+aws s3 cp "src\glue\customer_data_cleansing.py" "s3://<ACCOUNT_ID>-eu-west-2-datapipeline-raw/scripts/" --region eu-west-2
 
 # Start job
 aws glue start-job-run --job-name customer-data-cleansing-job --region eu-west-2
@@ -80,13 +80,13 @@ aws glue get-job-run --job-name customer-data-cleansing-job --run-id <JOB_RUN_ID
 ### S3 Operations
 ```powershell
 # Upload raw data
-aws s3 cp "data\raw\customers.csv" "s3://795359014756-eu-west-2-datapipeline-raw/customers/" --region eu-west-2
+aws s3 cp "data\raw\customers.csv" "s3://<ACCOUNT_ID>-eu-west-2-datapipeline-raw/customers/" --region eu-west-2
 
 # Download processed data
-aws s3 cp "s3://795359014756-eu-west-2-datapipeline-processed/customers/" "data\processed\customers\" --recursive --region eu-west-2
+aws s3 cp "s3://<ACCOUNT_ID>-eu-west-2-datapipeline-processed/customers/" "data\processed\customers\" --recursive --region eu-west-2
 
 # List processed files
-aws s3 ls "s3://795359014756-eu-west-2-datapipeline-processed/customers/" --region eu-west-2
+aws s3 ls "s3://<ACCOUNT_ID>-eu-west-2-datapipeline-processed/customers/" --region eu-west-2
 ```
 
 ## Data Quality Transformations

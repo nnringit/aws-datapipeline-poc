@@ -16,8 +16,8 @@
                 "s3:*"
             ],
             "Resource": [
-                "arn:aws:s3:::795359014756-eu-west-2-datapipeline-*",
-                "arn:aws:s3:::795359014756-eu-west-2-datapipeline-*/*"
+                "arn:aws:s3:::<ACCOUNT_ID>-eu-west-2-datapipeline-*",
+                "arn:aws:s3:::<ACCOUNT_ID>-eu-west-2-datapipeline-*/*"
             ]
         },
         {
@@ -35,7 +35,7 @@
                 "iam:ListRolePolicies",
                 "iam:ListAttachedRolePolicies"
             ],
-            "Resource": "arn:aws:iam::795359014756:role/GlueDataPipeline*"
+            "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/GlueDataPipeline*"
         },
         {
             "Sid": "AthenaAccess",

@@ -10,10 +10,10 @@
                 "s3:ListBucket"
             ],
             "Resource": [
-                "arn:aws:s3:::795359014756-eu-west-2-datapipeline-raw",
-                "arn:aws:s3:::795359014756-eu-west-2-datapipeline-raw/*",
-                "arn:aws:s3:::795359014756-eu-west-2-datapipeline-processed",
-                "arn:aws:s3:::795359014756-eu-west-2-datapipeline-processed/*"
+                "arn:aws:s3:::<ACCOUNT_ID>-eu-west-2-datapipeline-raw",
+                "arn:aws:s3:::<ACCOUNT_ID>-eu-west-2-datapipeline-raw/*",
+                "arn:aws:s3:::<ACCOUNT_ID>-eu-west-2-datapipeline-processed",
+                "arn:aws:s3:::<ACCOUNT_ID>-eu-west-2-datapipeline-processed/*"
             ]
         }
     ]

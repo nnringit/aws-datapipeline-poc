@@ -1,12 +1,12 @@
 {
     "Name": "customers-raw-crawler",
-    "Role": "arn:aws:iam::795359014756:role/GlueDataPipelineRole",
+    "Role": "arn:aws:iam::<ACCOUNT_ID>:role/GlueDataPipelineRole",
     "DatabaseName": "datapipeline_poc_db",
     "Description": "Crawler for raw customer data",
     "Targets": {
         "S3Targets": [
             {
-                "Path": "s3://795359014756-eu-west-2-datapipeline-raw/customers/"
+                "Path": "s3://<ACCOUNT_ID>-eu-west-2-datapipeline-raw/customers/"
             }
         ]
     },

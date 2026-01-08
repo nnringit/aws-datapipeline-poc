@@ -18,7 +18,7 @@ job.init(args['JOB_NAME'], args)
 # Configuration
 INPUT_DATABASE = "datapipeline_poc_db"
 INPUT_TABLE = "raw_customers"
-OUTPUT_PATH = "s3://795359014756-eu-west-2-datapipeline-processed/customers/"
+OUTPUT_PATH = "s3://<ACCOUNT_ID>-eu-west-2-datapipeline-processed/customers/"
 
 print("=== Starting Data Cleansing Job ===")
 
