@@ -22,8 +22,8 @@ Event-driven data pipeline for customer data cleansing using S3, Lambda, Glue, a
 
 | Resource | Name | Purpose |
 |----------|------|---------|
-| **Input S3 Bucket** | `795359014756-eu-west-2-datapipeline-raw` | Raw CSV files |
-| **Output S3 Bucket** | `795359014756-eu-west-2-datapipeline-processed` | Cleansed data |
+| **Input S3 Bucket** | `{account-id}-eu-west-2-datapipeline-raw` | Raw CSV files |
+| **Output S3 Bucket** | `{account-id}-eu-west-2-datapipeline-processed` | Cleansed data |
 | **Lambda Function** | `glue-pipeline-trigger` | S3 event → Glue trigger |
 | **Glue Database** | `datapipeline_poc_db` | Catalog metadata |
 | **Glue Table** | `raw_customers` | Schema for raw data |
@@ -40,18 +40,19 @@ Event-driven data pipeline for customer data cleansing using S3, Lambda, Glue, a
 │   │   └── customers.csv          # Sample input data with quality issues
 │   └── processed/
 │       └── customers/             # Cleansed output (CSV)
-├── infrastructure/                # Manual AWS CLI config (legacy)
-│   ├── glue/
-│   ├── iam/
-│   └── s3/
-├── terraform/                     # Infrastructure as Code (recommended)
+├── infrastructure/                # Manual AWS CLI config files
+│   ├── glue/                      # Glue database & crawler configs
+│   ├── iam/                       # IAM policy JSON files
+│   └── s3/                        # S3 notification config
+├── terraform/                     # Infrastructure as Code
 │   ├── providers.tf               # AWS provider config
 │   ├── variables.tf               # Input variables
 │   ├── s3.tf                      # S3 buckets and notifications
 │   ├── iam.tf                     # IAM roles and policies
 │   ├── glue.tf                    # Glue database, crawler, job
 │   ├── lambda.tf                  # Lambda function
-│   └── outputs.tf                 # Output values
+│   ├── outputs.tf                 # Output values
+│   └── import.ps1                 # Import existing resources
 └── src/
     ├── glue/
     │   └── customer_data_cleansing.py  # PySpark ETL script
@@ -60,44 +61,138 @@ Event-driven data pipeline for customer data cleansing using S3, Lambda, Glue, a
             └── handler.py              # Lambda S3 event handler
 ```
 
-## Deployment Options
+---
+
+## Deployment
 
 ### Option 1: Terraform (Recommended)
 
-```bash
+Deploy all infrastructure with a single command:
+
+```powershell
 cd terraform
 terraform init
 terraform plan
 terraform apply
 ```
 
-See [terraform/README.md](terraform/README.md) for details.
+**What gets created:**
+- 2 S3 buckets with versioning, encryption, public access blocks
+- 2 IAM roles with least-privilege policies
+- Glue database, crawler, and ETL job
+- Lambda function with S3 trigger
+- S3 bucket notification
+
+**For existing resources**, import them first:
+```powershell
+# Example imports (see terraform/import.ps1 for full list)
+terraform import aws_s3_bucket.raw "{account-id}-eu-west-2-datapipeline-raw"
+terraform import aws_glue_job.customer_cleansing "customer-data-cleansing-job"
+terraform import aws_lambda_function.glue_trigger "glue-pipeline-trigger"
+```
+
+See [terraform/README.md](terraform/README.md) for complete documentation.
+
+---
 
 ### Option 2: AWS CLI (Manual)
 
-See the Manual Operations section below.
+#### Step 1: Create S3 Buckets
+```powershell
+$ACCOUNT_ID = (aws sts get-caller-identity --query "Account" --output text)
+aws s3 mb "s3://${ACCOUNT_ID}-eu-west-2-datapipeline-raw" --region eu-west-2
+aws s3 mb "s3://${ACCOUNT_ID}-eu-west-2-datapipeline-processed" --region eu-west-2
+```
+
+#### Step 2: Create IAM Roles
+```powershell
+# Glue Role
+aws iam create-role --role-name GlueDataPipelineRole --assume-role-policy-document file://infrastructure/iam/glue-trust-policy.json
+aws iam put-role-policy --role-name GlueDataPipelineRole --policy-name GlueS3Access --policy-document file://infrastructure/iam/glue-s3-policy.json
+aws iam attach-role-policy --role-name GlueDataPipelineRole --policy-arn arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+
+# Lambda Role
+aws iam create-role --role-name LambdaGlueTriggerRole --assume-role-policy-document file://infrastructure/iam/lambda-trust-policy.json
+aws iam put-role-policy --role-name LambdaGlueTriggerRole --policy-name GlueTriggerPolicy --policy-document file://infrastructure/iam/lambda-execution-policy.json
+```
+
+#### Step 3: Create Glue Resources
+```powershell
+# Database
+aws glue create-database --database-input file://infrastructure/glue/database-input.json --region eu-west-2
+
+# Upload Glue script
+aws s3 cp "src\glue\customer_data_cleansing.py" "s3://${ACCOUNT_ID}-eu-west-2-datapipeline-raw/scripts/" --region eu-west-2
+
+# Create Glue job (update script location with your account ID)
+aws glue create-job --name customer-data-cleansing-job --role GlueDataPipelineRole --command "Name=glueetl,ScriptLocation=s3://${ACCOUNT_ID}-eu-west-2-datapipeline-raw/scripts/customer_data_cleansing.py,PythonVersion=3" --glue-version "4.0" --number-of-workers 2 --worker-type G.1X --region eu-west-2
+
+# Crawler
+aws glue create-crawler --cli-input-json file://infrastructure/glue/crawler-config.json --region eu-west-2
+```
+
+#### Step 4: Create Lambda Function
+```powershell
+# Package Lambda
+Compress-Archive -Path "src\lambda\glue_trigger\handler.py" -DestinationPath "lambda_function.zip" -Force
+
+# Create function
+aws lambda create-function --function-name glue-pipeline-trigger --runtime python3.12 --role "arn:aws:iam::${ACCOUNT_ID}:role/LambdaGlueTriggerRole" --handler handler.lambda_handler --zip-file fileb://lambda_function.zip --timeout 30 --memory-size 128 --environment "Variables={GLUE_JOB_NAME=customer-data-cleansing-job,ALLOWED_EXTENSIONS=.csv,ALLOWED_PREFIXES=customers/}" --region eu-west-2
+
+# Add S3 permission
+aws lambda add-permission --function-name glue-pipeline-trigger --statement-id s3-trigger --action lambda:InvokeFunction --principal s3.amazonaws.com --source-arn "arn:aws:s3:::${ACCOUNT_ID}-eu-west-2-datapipeline-raw" --source-account $ACCOUNT_ID --region eu-west-2
+
+# Configure S3 notification
+aws s3api put-bucket-notification-configuration --bucket "${ACCOUNT_ID}-eu-west-2-datapipeline-raw" --notification-configuration file://infrastructure/s3/notification-config.json --region eu-west-2
+
+# Cleanup
+Remove-Item "lambda_function.zip"
+```
+
+---
 
 ## Quick Start
 
 ### Trigger Pipeline (Automatic)
 Simply upload a CSV file to the `customers/` prefix:
 ```powershell
-aws s3 cp "data\raw\customers.csv" "s3://795359014756-eu-west-2-datapipeline-raw/customers/" --region eu-west-2
+aws s3 cp "data\raw\customers.csv" "s3://{account-id}-eu-west-2-datapipeline-raw/customers/" --region eu-west-2
 ```
 The Lambda function automatically triggers the Glue job.
 
 ### Check Job Status
 ```powershell
-# Get latest job run
 aws glue get-job-runs --job-name customer-data-cleansing-job --region eu-west-2 --query "JobRuns[0].{State:JobRunState,StartedOn:StartedOn}"
 ```
 
 ### Download Processed Output
 ```powershell
-aws s3 cp "s3://795359014756-eu-west-2-datapipeline-processed/customers/" "data\processed\customers\" --recursive --region eu-west-2
+aws s3 cp "s3://{account-id}-eu-west-2-datapipeline-processed/customers/" "data\processed\customers\" --recursive --region eu-west-2
 ```
 
-## Manual Operations
+---
+
+## Operations
+
+### Update Glue Script
+```powershell
+# Terraform: Just apply (auto-uploads)
+cd terraform && terraform apply
+
+# Manual: Upload to S3
+aws s3 cp "src\glue\customer_data_cleansing.py" "s3://{account-id}-eu-west-2-datapipeline-raw/scripts/" --region eu-west-2
+```
+
+### Update Lambda Function
+```powershell
+# Terraform: Just apply (auto-packages)
+cd terraform && terraform apply
+
+# Manual: Package and update
+Compress-Archive -Path "src\lambda\glue_trigger\handler.py" -DestinationPath "lambda_function.zip" -Force
+aws lambda update-function-code --function-name glue-pipeline-trigger --zip-file fileb://lambda_function.zip --region eu-west-2
+Remove-Item "lambda_function.zip"
+```
 
 ### Run Glue Crawler
 ```powershell
@@ -105,23 +200,12 @@ aws glue start-crawler --name customers-raw-crawler --region eu-west-2
 aws glue get-crawler --name customers-raw-crawler --region eu-west-2 --query "Crawler.State"
 ```
 
-### Update Glue Script
-```powershell
-# Must upload to S3 before running - Glue reads from S3, not local
-aws s3 cp "src\glue\customer_data_cleansing.py" "s3://795359014756-eu-west-2-datapipeline-raw/scripts/" --region eu-west-2
-```
-
-### Update Lambda Function
-```powershell
-Compress-Archive -Path "src\lambda\glue_trigger\handler.py" -DestinationPath "lambda_function.zip" -Force
-aws lambda update-function-code --function-name glue-pipeline-trigger --zip-file fileb://lambda_function.zip --region eu-west-2
-Remove-Item "lambda_function.zip"
-```
-
 ### Check Lambda Logs
 ```powershell
 aws logs filter-log-events --log-group-name "/aws/lambda/glue-pipeline-trigger" --limit 10 --region eu-west-2 --query "events[*].message"
 ```
+
+---
 
 ## Data Quality Transformations
 
