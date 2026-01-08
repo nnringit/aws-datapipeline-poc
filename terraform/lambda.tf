@@ -49,9 +49,11 @@ resource "aws_lambda_permission" "allow_s3" {
 
 # =============================================================================
 # CloudWatch Log Group for Lambda
+# Note: Lambda auto-creates log group. Managing via Terraform requires 
+# logs:TagResource permission. Uncomment if you have that permission.
 # =============================================================================
 
-resource "aws_cloudwatch_log_group" "lambda" {
-  name              = "/aws/lambda/${var.lambda_function_name}"
-  retention_in_days = 14
-}
+# resource "aws_cloudwatch_log_group" "lambda" {
+#   name              = "/aws/lambda/${var.lambda_function_name}"
+#   retention_in_days = 14
+# }
