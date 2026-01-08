@@ -1,0 +1,44 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "GlueFullAccess",
+            "Effect": "Allow",
+            "Action": ["glue:*"],
+            "Resource": "*"
+        },
+        {
+            "Sid": "S3FullAccess",
+            "Effect": "Allow",
+            "Action": ["s3:*"],
+            "Resource": [
+                "arn:aws:s3:::795359014756-eu-west-2-datapipeline-*",
+                "arn:aws:s3:::795359014756-eu-west-2-datapipeline-*/*"
+            ]
+        },
+        {
+            "Sid": "IAMPassRole",
+            "Effect": "Allow",
+            "Action": ["iam:PassRole", "iam:CreateRole", "iam:DeleteRole", "iam:AttachRolePolicy", "iam:DetachRolePolicy", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRole", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies"],
+            "Resource": ["arn:aws:iam::795359014756:role/GlueDataPipeline*", "arn:aws:iam::795359014756:role/LambdaGlueTriggerRole"]
+        },
+        {
+            "Sid": "AthenaAccess",
+            "Effect": "Allow",
+            "Action": ["athena:*"],
+            "Resource": "*"
+        },
+        {
+            "Sid": "CloudWatchLogs",
+            "Effect": "Allow",
+            "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:GetLogEvents"],
+            "Resource": "*"
+        },
+        {
+            "Sid": "LambdaFullAccess",
+            "Effect": "Allow",
+            "Action": ["lambda:*"],
+            "Resource": "*"
+        }
+    ]
+}

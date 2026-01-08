@@ -1,39 +1,40 @@
-# AWS Data Pipeline PoC - Reference Documentation
+# AWS Data Pipeline PoC
 
-## Project Overview
-AWS data pipeline demonstrating data ingestion, transformation, and cleansing using S3, Glue, and Athena in the **eu-west-2** region.
+Event-driven data pipeline for customer data cleansing using S3, Lambda, Glue, and Athena in **eu-west-2**.
 
 ## Architecture
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Raw S3 Bucket │────▶│   Glue Crawler  │────▶│  Glue Catalog   │
-│  (CSV input)    │     │                 │     │  (raw_customers)│
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                                                        │
-                                                        ▼
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│ Processed Bucket│◀────│  Glue ETL Job   │◀────│  Data Cleansing │
-│  (CSV output)   │     │  (PySpark)      │     │  Transformations│
-└─────────────────┘     └─────────────────┘     └─────────────────┘
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  S3 Upload  │────▶│   Lambda    │────▶│  Glue ETL   │────▶│ Processed   │
+│ (customers/)│     │  Trigger    │     │  (PySpark)  │     │   S3 Output │
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+       │                                       │
+       ▼                                       ▼
+┌─────────────┐                         ┌─────────────┐
+│Glue Crawler │────────────────────────▶│Glue Catalog │
+└─────────────┘                         └─────────────┘
 ```
+
+**Flow**: Upload CSV to `customers/` → Lambda auto-triggers → Glue job cleanses data → Output to processed bucket
 
 ## AWS Resources
 
 | Resource | Name | Purpose |
 |----------|------|---------|
-| **Input S3 Bucket** | `<ACCOUNT_ID>-eu-west-2-datapipeline-raw` | Store raw CSV files |
-| **Output S3 Bucket** | `<ACCOUNT_ID>-eu-west-2-datapipeline-processed` | Store cleansed data |
+| **Input S3 Bucket** | `795359014756-eu-west-2-datapipeline-raw` | Raw CSV files |
+| **Output S3 Bucket** | `795359014756-eu-west-2-datapipeline-processed` | Cleansed data |
+| **Lambda Function** | `glue-pipeline-trigger` | S3 event → Glue trigger |
 | **Glue Database** | `datapipeline_poc_db` | Catalog metadata |
 | **Glue Table** | `raw_customers` | Schema for raw data |
 | **Glue Crawler** | `customers-raw-crawler` | Auto-discover schema |
 | **Glue ETL Job** | `customer-data-cleansing-job` | Data transformation |
-| **IAM Role** | `GlueDataPipelineRole` | Glue service permissions |
+| **IAM Roles** | `GlueDataPipelineRole`, `LambdaGlueTriggerRole` | Service permissions |
 
 ## Directory Structure
 ```
 ├── .github/
-│   └── copilot-instructions.md    # This documentation
+│   └── copilot-instructions.md    # AI agent instructions
 ├── data/
 │   ├── raw/
 │   │   └── customers.csv          # Sample input data with quality issues
@@ -43,21 +44,40 @@ AWS data pipeline demonstrating data ingestion, transformation, and cleansing us
 │   ├── glue/
 │   │   ├── database-input.json    # Glue database config
 │   │   └── crawler-config.json    # Crawler configuration
-│   └── iam/
-│       ├── datapipeline-user-policy.json  # User permissions
-│       ├── glue-trust-policy.json         # Role trust policy
-│       └── glue-s3-policy.json            # S3 access for Glue
+│   ├── iam/
+│   │   ├── glue-*.json            # Glue IAM policies
+│   │   └── lambda-*.json          # Lambda IAM policies
+│   └── s3/
+│       └── notification-config.json # S3 → Lambda trigger config
 └── src/
-    └── glue/
-        └── customer_data_cleansing.py     # PySpark ETL script
+    ├── glue/
+    │   └── customer_data_cleansing.py  # PySpark ETL script
+    └── lambda/
+        └── glue_trigger/
+            └── handler.py              # Lambda S3 event handler
 ```
 
-## Common Commands
+## Quick Start
 
-### Check AWS Identity
+### Trigger Pipeline (Automatic)
+Simply upload a CSV file to the `customers/` prefix:
 ```powershell
-aws sts get-caller-identity
+aws s3 cp "data\raw\customers.csv" "s3://795359014756-eu-west-2-datapipeline-raw/customers/" --region eu-west-2
 ```
+The Lambda function automatically triggers the Glue job.
+
+### Check Job Status
+```powershell
+# Get latest job run
+aws glue get-job-runs --job-name customer-data-cleansing-job --region eu-west-2 --query "JobRuns[0].{State:JobRunState,StartedOn:StartedOn}"
+```
+
+### Download Processed Output
+```powershell
+aws s3 cp "s3://795359014756-eu-west-2-datapipeline-processed/customers/" "data\processed\customers\" --recursive --region eu-west-2
+```
+
+## Manual Operations
 
 ### Run Glue Crawler
 ```powershell
@@ -65,71 +85,58 @@ aws glue start-crawler --name customers-raw-crawler --region eu-west-2
 aws glue get-crawler --name customers-raw-crawler --region eu-west-2 --query "Crawler.State"
 ```
 
-### Run Glue ETL Job
+### Update Glue Script
 ```powershell
-# Upload script changes first
-aws s3 cp "src\glue\customer_data_cleansing.py" "s3://<ACCOUNT_ID>-eu-west-2-datapipeline-raw/scripts/" --region eu-west-2
-
-# Start job
-aws glue start-job-run --job-name customer-data-cleansing-job --region eu-west-2
-
-# Check status (replace JOB_RUN_ID)
-aws glue get-job-run --job-name customer-data-cleansing-job --run-id <JOB_RUN_ID> --region eu-west-2 --query "JobRun.JobRunState"
+# Must upload to S3 before running - Glue reads from S3, not local
+aws s3 cp "src\glue\customer_data_cleansing.py" "s3://795359014756-eu-west-2-datapipeline-raw/scripts/" --region eu-west-2
 ```
 
-### S3 Operations
+### Update Lambda Function
 ```powershell
-# Upload raw data
-aws s3 cp "data\raw\customers.csv" "s3://<ACCOUNT_ID>-eu-west-2-datapipeline-raw/customers/" --region eu-west-2
+Compress-Archive -Path "src\lambda\glue_trigger\handler.py" -DestinationPath "lambda_function.zip" -Force
+aws lambda update-function-code --function-name glue-pipeline-trigger --zip-file fileb://lambda_function.zip --region eu-west-2
+Remove-Item "lambda_function.zip"
+```
 
-# Download processed data
-aws s3 cp "s3://<ACCOUNT_ID>-eu-west-2-datapipeline-processed/customers/" "data\processed\customers\" --recursive --region eu-west-2
-
-# List processed files
-aws s3 ls "s3://<ACCOUNT_ID>-eu-west-2-datapipeline-processed/customers/" --region eu-west-2
+### Check Lambda Logs
+```powershell
+aws logs filter-log-events --log-group-name "/aws/lambda/glue-pipeline-trigger" --limit 10 --region eu-west-2 --query "events[*].message"
 ```
 
 ## Data Quality Transformations
 
-The Glue ETL job (`customer_data_cleansing.py`) performs:
+The Glue ETL job performs these cleansing operations:
 
-1. **Remove duplicates** - Exact duplicate rows removed
-2. **Standardize country** - Uppercase all country names
-3. **Handle NULL strings** - Convert "NULL"/"N/A" to actual nulls
-4. **Validate emails** - Regex validation, invalid emails set to null
-5. **Fix negative amounts** - Negative purchase amounts set to null
-6. **Trim whitespace** - Clean string column values
-7. **Resolve choice types** - Handle mixed data types from CSV
+| # | Transformation | Example |
+|---|----------------|---------|
+| 1 | Remove duplicates | Duplicate rows eliminated |
+| 2 | Standardize country | `usa` → `USA` |
+| 3 | Handle NULL strings | `"NULL"`, `"N/A"` → actual null |
+| 4 | Validate emails | `INVALID_EMAIL` → null |
+| 5 | Fix negative amounts | `-25.00` → null |
+| 6 | Trim whitespace | `"  John  "` → `"John"` |
+| 7 | Resolve choice types | Handle mixed CSV data types |
 
-## IAM Permissions Required
+## Lambda Trigger Configuration
 
-User needs these permissions:
-- `glue:*` - Full Glue access
-- `s3:*` on datapipeline buckets
-- `iam:PassRole` for Glue role
-- `athena:*` for querying
-- `logs:*` for CloudWatch
-
-## Conventions
-
-- **Region**: Always use `eu-west-2`
-- **Bucket naming**: `{account-id}-{region}-datapipeline-{purpose}`
-- **Glue scripts**: Store in `s3://.../scripts/` folder
-- **Table prefix**: `raw_` for input tables, `processed_` for output
-- **Tags**: `Project: aws-datapipeline-poc`, `Environment: dev`
+The Lambda function (`glue-pipeline-trigger`) is configured to:
+- **Trigger on**: `s3:ObjectCreated:*` events
+- **Filter**: Files matching `customers/*.csv`
+- **Skip**: `_SUCCESS` files, hidden files (starting with `.` or `_`)
+- **Environment variables**: `GLUE_JOB_NAME`, `ALLOWED_EXTENSIONS`, `ALLOWED_PREFIXES`
 
 ## Troubleshooting
 
-### Glue Job Fails with Type Errors
-Use `ResolveChoice.apply()` to handle mixed types in CSV:
-```python
-dynamic_frame = ResolveChoice.apply(frame=dynamic_frame, choice="cast:double")
-```
+| Issue | Solution |
+|-------|----------|
+| Glue job type errors | Add `ResolveChoice.apply(..., choice="cast:double")` before `toDF()` |
+| Script changes not applied | Upload to S3 first - Glue reads scripts from S3 |
+| Lambda not triggering | Check S3 notification config and Lambda permissions |
+| IAM permission denied | Wait 10-15s for propagation, verify policies attached |
 
-### IAM Permission Denied
-1. Check policy is attached: `aws iam list-user-policies --user-name <user>`
-2. Wait 10-15 seconds for propagation
-3. Try attaching AWS managed policy: `AWSGlueConsoleFullAccess`
+## Conventions
 
-### AWS CLI Not Found
-Add to PATH: `$env:Path += ";C:\Program Files\Amazon\AWSCLIV2"`
+- **Region**: Always `eu-west-2`
+- **Bucket naming**: `{account-id}-eu-west-2-datapipeline-{raw|processed}`
+- **Table prefix**: `raw_` for input tables
+- **Tags**: `Project: aws-datapipeline-poc`, `Environment: dev`

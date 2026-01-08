@@ -55,6 +55,14 @@
                 "logs:GetLogEvents"
             ],
             "Resource": "*"
+        },
+        {
+            "Sid": "LambdaFullAccess",
+            "Effect": "Allow",
+            "Action": [
+                "lambda:*"
+            ],
+            "Resource": "*"
         }
     ]
 }

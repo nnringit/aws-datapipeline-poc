@@ -16,17 +16,18 @@ job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
 
 # Configuration
-INPUT_DATABASE = "datapipeline_poc_db"
-INPUT_TABLE = "raw_customers"
-OUTPUT_PATH = "s3://<ACCOUNT_ID>-eu-west-2-datapipeline-processed/customers/"
+INPUT_PATH = "s3://795359014756-eu-west-2-datapipeline-raw/customers/"
+OUTPUT_PATH = "s3://795359014756-eu-west-2-datapipeline-processed/customers/"
 
 print("=== Starting Data Cleansing Job ===")
 
-# Read data from Glue catalog
-print("Reading data from Glue catalog...")
-dynamic_frame = glueContext.create_dynamic_frame.from_catalog(
-    database=INPUT_DATABASE,
-    table_name=INPUT_TABLE,
+# Read data directly from S3 (bypasses Glue Catalog - no crawler dependency)
+print(f"Reading data from S3: {INPUT_PATH}")
+dynamic_frame = glueContext.create_dynamic_frame.from_options(
+    connection_type="s3",
+    connection_options={"paths": [INPUT_PATH], "recurse": True},
+    format="csv",
+    format_options={"withHeader": True, "separator": ","},
     transformation_ctx="datasource0"
 )
 

@@ -1,0 +1,23 @@
+{
+    "LambdaFunctionConfigurations": [
+        {
+            "Id": "TriggerGlueJobOnNewCSV",
+            "LambdaFunctionArn": "arn:aws:lambda:eu-west-2:795359014756:function:glue-pipeline-trigger",
+            "Events": ["s3:ObjectCreated:*"],
+            "Filter": {
+                "Key": {
+                    "FilterRules": [
+                        {
+                            "Name": "prefix",
+                            "Value": "customers/"
+                        },
+                        {
+                            "Name": "suffix",
+                            "Value": ".csv"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

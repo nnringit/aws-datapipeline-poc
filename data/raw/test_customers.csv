@@ -1,0 +1,4 @@
+customer_id,first_name,last_name,email,phone,signup_date,country,purchase_amount
+101,Test,User,test.user@email.com,555-999-0001,2026-01-08,USA,99.99
+102,Auto,Trigger,auto.trigger@email.com,555-999-0002,2026-01-08,UK,149.50
+103,Pipeline,Test,pipeline.test@email.com,555-999-0003,2026-01-08,GERMANY,200.00
