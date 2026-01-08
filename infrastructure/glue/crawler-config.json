@@ -1,0 +1,21 @@
+{
+    "Name": "customers-raw-crawler",
+    "Role": "arn:aws:iam::795359014756:role/GlueDataPipelineRole",
+    "DatabaseName": "datapipeline_poc_db",
+    "Description": "Crawler for raw customer data",
+    "Targets": {
+        "S3Targets": [
+            {
+                "Path": "s3://795359014756-eu-west-2-datapipeline-raw/customers/"
+            }
+        ]
+    },
+    "SchemaChangePolicy": {
+        "UpdateBehavior": "UPDATE_IN_DATABASE",
+        "DeleteBehavior": "DELETE_FROM_DATABASE"
+    },
+    "RecrawlPolicy": {
+        "RecrawlBehavior": "CRAWL_EVERYTHING"
+    },
+    "TablePrefix": "raw_"
+}

@@ -1,0 +1,17 @@
+customer_id,first_name,last_name,email,phone,signup_date,country,purchase_amount
+1,John,Doe,john.doe@email.com,555-123-4567,2024-01-15,USA,150.00
+2,Jane,Smith,jane.smith@email.com,555-234-5678,2024-02-20,USA,200.50
+3,Bob,,bob.wilson@email.com,555-345-6789,2024-03-10,Canada,75.25
+4,Alice,Johnson,INVALID_EMAIL,555-456-7890,2024-04-05,UK,300.00
+5,Charlie,Brown,charlie.brown@email.com,,2024-05-12,USA,125.75
+6,Diana,Prince,diana.prince@email.com,555-567-8901,INVALID_DATE,Germany,450.00
+7,,,empty.user@email.com,555-678-9012,2024-07-01,France,50.00
+8,Frank,Miller,frank.miller@email.com,555-789-0123,2024-08-15,usa,175.50
+9,Grace,Lee,grace.lee@email.com,555-890-1234,2024-09-20,CANADA,-25.00
+10,Henry,Taylor,henry.taylor@email.com,555-901-2345,2024-10-25,UK,500.00
+1,John,Doe,john.doe@email.com,555-123-4567,2024-01-15,USA,150.00
+11,Ivy,Chen,,555-012-3456,2024-11-30,Japan,225.00
+12,Jack,Wilson,jack.wilson@email.com,555-111-2222,2024-12-05,Australia,
+13,Kate,Brown,kate.brown@email.com,555-222-3333,2024-12-10,usa,350.25
+14,Leo,Garcia,leo.garcia@email.com,N/A,2024-12-15,Mexico,175.00
+15,Mia,Anderson,mia.anderson@email.com,555-333-4444,2024-12-20,USA,NULL
