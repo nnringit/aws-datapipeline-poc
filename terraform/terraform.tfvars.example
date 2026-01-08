@@ -1,0 +1,10 @@
+# Copy this file to terraform.tfvars and customize as needed
+
+aws_region             = "eu-west-2"
+environment            = "dev"
+project_name           = "datapipeline"
+glue_job_name          = "customer-data-cleansing-job"
+glue_database_name     = "datapipeline_poc_db"
+lambda_function_name   = "glue-pipeline-trigger"
+glue_worker_type       = "G.1X"
+glue_number_of_workers = 2

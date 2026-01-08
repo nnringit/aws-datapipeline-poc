@@ -40,15 +40,18 @@ Event-driven data pipeline for customer data cleansing using S3, Lambda, Glue, a
 │   │   └── customers.csv          # Sample input data with quality issues
 │   └── processed/
 │       └── customers/             # Cleansed output (CSV)
-├── infrastructure/
+├── infrastructure/                # Manual AWS CLI config (legacy)
 │   ├── glue/
-│   │   ├── database-input.json    # Glue database config
-│   │   └── crawler-config.json    # Crawler configuration
 │   ├── iam/
-│   │   ├── glue-*.json            # Glue IAM policies
-│   │   └── lambda-*.json          # Lambda IAM policies
 │   └── s3/
-│       └── notification-config.json # S3 → Lambda trigger config
+├── terraform/                     # Infrastructure as Code (recommended)
+│   ├── providers.tf               # AWS provider config
+│   ├── variables.tf               # Input variables
+│   ├── s3.tf                      # S3 buckets and notifications
+│   ├── iam.tf                     # IAM roles and policies
+│   ├── glue.tf                    # Glue database, crawler, job
+│   ├── lambda.tf                  # Lambda function
+│   └── outputs.tf                 # Output values
 └── src/
     ├── glue/
     │   └── customer_data_cleansing.py  # PySpark ETL script
@@ -56,6 +59,23 @@ Event-driven data pipeline for customer data cleansing using S3, Lambda, Glue, a
         └── glue_trigger/
             └── handler.py              # Lambda S3 event handler
 ```
+
+## Deployment Options
+
+### Option 1: Terraform (Recommended)
+
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+See [terraform/README.md](terraform/README.md) for details.
+
+### Option 2: AWS CLI (Manual)
+
+See the Manual Operations section below.
 
 ## Quick Start
 
